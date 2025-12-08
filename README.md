@@ -1,6 +1,6 @@
 # 🚗 MLOps Vehicle Insurance Prediction
 
-An end-to-end MLOps pipeline for predicting vehicle insurance cross-sell opportunities. This project demonstrates industry-standard MLOps practices including data versioning, experiment tracking, model training, CI/CD pipelines, and model deployment.
+An end-to-end MLOps pipeline for predicting vehicle insurance cross-sell opportunities. This project demonstrates industry-standard MLOps practices including MongoDB integration, AWS S3 model registry, CI/CD pipelines with GitHub Actions, and Docker-based deployment on AWS EC2.
 
 ---
 
@@ -10,11 +10,12 @@ An end-to-end MLOps pipeline for predicting vehicle insurance cross-sell opportu
 - [Project Architecture](#project-architecture)
 - [Project Structure](#project-structure)
 - [Technologies Used](#technologies-used)
-- [Installation](#installation)
+- [Getting Started](#getting-started)
+- [MongoDB Setup](#mongodb-setup)
+- [AWS Configuration](#aws-configuration)
+- [Pipeline Components](#pipeline-components)
+- [CI/CD Deployment](#cicd-deployment)
 - [Usage](#usage)
-- [Pipeline Stages](#pipeline-stages)
-- [Model Training](#model-training)
-- [Deployment](#deployment)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -34,18 +35,20 @@ An insurance company needs to build a model to predict whether policyholders fro
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Data Source   │────▶│  Data Ingestion │────▶│ Data Validation │
+│  MongoDB Atlas  │────▶│  Data Ingestion │────▶│ Data Validation │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
                                                          │
                                                          ▼
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Deployment    │◀────│ Model Evaluation│◀────│  Model Training │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-         │                                               ▲
-         ▼                                               │
-┌─────────────────┐                             ┌─────────────────┐
-│   Monitoring    │                             │Data Transformation│
-└─────────────────┘                             └─────────────────┘
+│  Model Pusher   │◀────│ Model Evaluation│◀────│  Model Trainer  │
+│   (AWS S3)      │     └─────────────────┘     └─────────────────┘
+└─────────────────┘                                      ▲
+         │                                               │
+         ▼                                      ┌─────────────────┐
+┌─────────────────┐                             │Data Transformation│
+│  Flask App      │                             └─────────────────┘
+│  (AWS EC2)      │
+└─────────────────┘
 ```
 
 ---
@@ -56,41 +59,79 @@ An insurance company needs to build a model to predict whether policyholders fro
 MLOPS-Project-Vehicle-insurance/
 │
 ├── .github/
-│   └── workflows/           # CI/CD pipeline configurations
+│   └── workflows/
+│       └── aws.yaml                 # CI/CD pipeline configuration
 │
 ├── config/
-│   └── config.yaml          # Configuration parameters
+│   ├── model.yaml                   # Model configuration
+│   └── schema.yaml                  # Dataset schema for validation
 │
 ├── src/
-│   ├── components/          # Pipeline components
+│   ├── __init__.py
+│   │
+│   ├── components/                  # Pipeline components
+│   │   ├── __init__.py
 │   │   ├── data_ingestion.py
 │   │   ├── data_validation.py
 │   │   ├── data_transformation.py
 │   │   ├── model_trainer.py
-│   │   └── model_evaluation.py
+│   │   ├── model_evaluation.py
+│   │   └── model_pusher.py
 │   │
-│   ├── pipeline/            # Training and prediction pipelines
+│   ├── pipline/                     # Training and prediction pipelines
+│   │   ├── __init__.py
 │   │   ├── training_pipeline.py
 │   │   └── prediction_pipeline.py
 │   │
-│   ├── entity/              # Data classes and configurations
-│   ├── constants/           # Project constants
-│   ├── utils/               # Utility functions
-│   ├── logger/              # Logging configuration
-│   └── exception/           # Custom exception handling
+│   ├── configuration/               # Connection configurations
+│   │   ├── __init__.py
+│   │   ├── mongo_db_connection.py
+│   │   └── aws_connection.py
+│   │
+│   ├── cloud_storage/               # AWS S3 operations
+│   │   ├── __init__.py
+│   │   └── aws_storage.py
+│   │
+│   ├── data_access/                 # Data access layer
+│   │   ├── __init__.py
+│   │   └── proj1_data.py
+│   │
+│   ├── entity/                      # Data classes and configurations
+│   │   ├── __init__.py
+│   │   ├── config_entity.py
+│   │   ├── artifact_entity.py
+│   │   ├── estimator.py
+│   │   └── s3_estimator.py
+│   │
+│   ├── constants/                   # Project constants
+│   │   └── __init__.py
+│   │
+│   ├── utils/                       # Utility functions
+│   │   ├── __init__.py
+│   │   └── main_utils.py
+│   │
+│   ├── logger/                      # Logging configuration
+│   │   └── __init__.py
+│   │
+│   └── exception/                   # Custom exception handling
+│       └── __init__.py
 │
-├── notebooks/               # Jupyter notebooks for EDA
-├── artifacts/               # Generated artifacts (models, data)
-├── logs/                    # Application logs
-├── templates/               # HTML templates for web app
-├── static/                  # Static files (CSS, JS)
+├── notebook/                        # Jupyter notebooks
+│   ├── mongoDB_demo.ipynb           # MongoDB data upload
+│   └── EDA_Feature_Engineering.ipynb
 │
-├── app.py                   # Flask/FastAPI application
-├── main.py                  # Pipeline execution entry point
-├── requirements.txt         # Python dependencies
-├── setup.py                 # Package setup file
-├── Dockerfile               # Docker configuration
-├── docker-compose.yaml      # Docker compose configuration
+├── static/                          # Static files (CSS, JS)
+├── templates/                       # HTML templates for Flask app
+├── artifacts/                       # Generated artifacts (in .gitignore)
+│
+├── app.py                           # Flask application
+├── demo.py                          # Pipeline testing script
+├── template.py                      # Project template generator
+├── requirements.txt                 # Python dependencies
+├── setup.py                         # Package setup file
+├── pyproject.toml                   # Project configuration
+├── Dockerfile                       # Docker configuration
+├── .dockerignore                    # Docker ignore file
 └── README.md
 ```
 
@@ -100,79 +141,246 @@ MLOPS-Project-Vehicle-insurance/
 
 | Category | Technologies |
 |----------|-------------|
-| **Programming Language** | Python 3.9+ |
-| **ML Framework** | Scikit-learn, XGBoost, LightGBM |
+| **Programming Language** | Python 3.10 |
+| **ML Framework** | Scikit-learn |
 | **Data Processing** | Pandas, NumPy |
-| **Experiment Tracking** | MLflow |
-| **Data Versioning** | DVC |
-| **Model Registry** | MLflow Model Registry |
-| **Web Framework** | Flask / FastAPI |
-| **Containerization** | Docker |
+| **Database** | MongoDB Atlas |
 | **Cloud Platform** | AWS (S3, EC2, ECR) |
+| **Model Registry** | AWS S3 Bucket |
+| **Web Framework** | Flask |
+| **Containerization** | Docker |
 | **CI/CD** | GitHub Actions |
-| **Database** | MongoDB |
 | **Visualization** | Matplotlib, Seaborn |
 
 ---
 
-## ⚙️ Installation
+## ⚙️ Getting Started
 
 ### Prerequisites
 
-- Python 3.9 or higher
+- Python 3.10
+- Conda (recommended)
 - Git
-- Docker (optional)
-- AWS CLI configured (for cloud deployment)
+- MongoDB Atlas account
+- AWS Account
 
-### Local Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/MLOPS-Project-Vehicle-insurance.git
-   cd MLOPS-Project-Vehicle-insurance
-   ```
-
-2. **Create virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-### Docker Setup
+### Step 1: Create Project Template
 
 ```bash
-docker build -t vehicle-insurance-mlops .
-docker run -p 8080:8080 vehicle-insurance-mlops
+python template.py
+```
+
+### Step 2: Setup Virtual Environment
+
+```bash
+# Create conda environment
+conda create -n vehicle python=3.10 -y
+
+# Activate environment
+conda activate vehicle
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Verify local packages are installed
+pip list
+```
+
+### Step 3: Configure Environment Variables
+
+**For Bash:**
+```bash
+export MONGODB_URL="mongodb+srv://<username>:<password>@cluster.mongodb.net/?retryWrites=true&w=majority"
+export AWS_ACCESS_KEY_ID="your_access_key"
+export AWS_SECRET_ACCESS_KEY="your_secret_key"
+```
+
+**For PowerShell:**
+```powershell
+$env:MONGODB_URL = "mongodb+srv://<username>:<password>@cluster.mongodb.net/?retryWrites=true&w=majority"
+$env:AWS_ACCESS_KEY_ID = "your_access_key"
+$env:AWS_SECRET_ACCESS_KEY = "your_secret_key"
 ```
 
 ---
 
-## 🚀 Usage
+## 🍃 MongoDB Setup
+
+1. **Create MongoDB Atlas Account**
+   - Sign up at [MongoDB Atlas](https://www.mongodb.com/atlas)
+   - Create a new project
+
+2. **Create Cluster**
+   - Click "Create Cluster"
+   - Select M0 (Free Tier)
+   - Click "Create Deployment"
+
+3. **Configure Database User**
+   - Set username and password
+   - Create DB user
+
+4. **Configure Network Access**
+   - Go to "Network Access"
+   - Add IP Address: `0.0.0.0/0` (allows access from anywhere)
+
+5. **Get Connection String**
+   - Go to project → "Get Connection String" → "Drivers"
+   - Select Driver: Python, Version: 3.6 or later
+   - Copy connection string and replace `<password>`
+
+6. **Upload Data to MongoDB**
+   - Open `notebook/mongoDB_demo.ipynb`
+   - Select kernel: Python (vehicle environment)
+   - Run cells to push data to MongoDB
+
+7. **Verify Data**
+   - Go to MongoDB Atlas → Database → Browse Collections
+   - View your data in key-value format
+
+---
+
+## ☁️ AWS Configuration
+
+### IAM User Setup
+
+1. Login to AWS Console
+2. Set region to `us-east-1`
+3. Go to IAM → Create new user
+4. Attach policy: `AdministratorAccess`
+5. Create Access Key (CLI) and download CSV
+
+### S3 Bucket Setup
+
+1. Go to S3 Service → Create Bucket
+2. **Region:** us-east-1
+3. **Bucket Name:** `my-model-mlopsproj`
+4. Uncheck "Block all public access"
+5. Create Bucket
+
+### Constants Configuration
+
+Update `src/constants/__init__.py`:
+```python
+MODEL_EVALUATION_CHANGED_THRESHOLD_SCORE: float = 0.02
+MODEL_BUCKET_NAME = "my-model-mlopsproj"
+MODEL_PUSHER_S3_KEY = "model-registry"
+```
+
+---
+
+## 📊 Pipeline Components
+
+### 1. Data Ingestion
+- Connects to MongoDB using connection URL
+- Fetches data in key-value format
+- Transforms data to DataFrame
+- Splits into train and test sets
+- Saves raw data as artifacts
+
+### 2. Data Validation
+- Schema validation using `config/schema.yaml`
+- Data quality checks
+- Data drift detection
+
+### 3. Data Transformation
+- Feature engineering
+- Handling missing values
+- Encoding categorical variables
+- Feature scaling
+
+### 4. Model Trainer
+- Model training with selected algorithm
+- Hyperparameter configuration
+- Model artifact generation
+
+### 5. Model Evaluation
+- Performance metrics calculation
+- Comparison with existing model in S3
+- Threshold-based model acceptance (0.02 improvement)
+
+### 6. Model Pusher
+- Push accepted model to AWS S3
+- Model versioning in S3 bucket
+
+---
+
+## 🚀 CI/CD Deployment
+
+### Docker Setup
+
+The project includes `Dockerfile` and `.dockerignore` for containerization.
+
+### EC2 Instance Setup
+
+1. **Launch EC2 Instance**
+   - Name: `vehicledata-machine`
+   - Image: Ubuntu Server 24.04 (Free tier)
+   - Instance Type: T2 Medium
+   - Create key pair: `proj1key`
+   - Allow HTTP/HTTPS traffic
+   - Storage: 30GB
+
+2. **Install Docker on EC2**
+   ```bash
+   sudo apt-get update -y
+   sudo apt-get upgrade
+   curl -fsSL https://get.docker.com -o get-docker.sh
+   sudo sh get-docker.sh
+   sudo usermod -aG docker ubuntu
+   newgrp docker
+   ```
+
+### ECR Repository Setup
+
+1. Go to AWS ECR → Create Repository
+2. **Region:** us-east-1
+3. **Repository Name:** `vehicleproj`
+4. Copy and save the URI
+
+### GitHub Self-Hosted Runner
+
+1. Go to GitHub Repository → Settings → Actions → Runners
+2. Click "New self-hosted runner"
+3. Select OS: Linux
+4. Run "Download" commands on EC2
+5. Run "Configure" command:
+   ```bash
+   ./config.sh  # Runner name: self-hosted
+   ./run.sh     # Start the runner
+   ```
+
+### GitHub Secrets Configuration
+
+Go to GitHub → Settings → Secrets and Variables → Actions → New Repository Secret
+
+| Secret Name | Value |
+|-------------|-------|
+| `AWS_ACCESS_KEY_ID` | Your AWS Access Key |
+| `AWS_SECRET_ACCESS_KEY` | Your AWS Secret Key |
+| `AWS_DEFAULT_REGION` | us-east-1 |
+| `ECR_REPO` | ECR Repository URI |
+
+### Configure EC2 Security Group
+
+1. Go to EC2 Instance → Security → Security Groups
+2. Edit Inbound Rules → Add Rule
+3. **Type:** Custom TCP
+4. **Port Range:** 5080
+5. **Source:** 0.0.0.0/0
+6. Save Rules
+
+### Trigger Deployment
+
+CI/CD pipeline triggers automatically on push to main branch.
+
+---
+
+## 🖥️ Usage
 
 ### Run Training Pipeline
 
 ```bash
-python main.py
-```
-
-### Run Individual Components
-
-```python
-from src.pipeline.training_pipeline import TrainingPipeline
-
-pipeline = TrainingPipeline()
-pipeline.run_pipeline()
+python demo.py
 ```
 
 ### Start Web Application
@@ -181,62 +389,22 @@ pipeline.run_pipeline()
 python app.py
 ```
 
-Access the application at `http://localhost:8080`
+### Access Application
 
-### Make Predictions via API
+- **Local:** `http://localhost:5080`
+- **EC2:** `http://<ec2-public-ip>:5080`
 
-```bash
-curl -X POST http://localhost:8080/predict \
-  -H "Content-Type: application/json" \
-  -d '{
-    "Gender": "Male",
-    "Age": 35,
-    "Driving_License": 1,
-    "Region_Code": 28,
-    "Previously_Insured": 0,
-    "Vehicle_Age": "1-2 Year",
-    "Vehicle_Damage": "Yes",
-    "Annual_Premium": 30000,
-    "Policy_Sales_Channel": 26,
-    "Vintage": 150
-  }'
-```
+### Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `/` | Home page with prediction form |
+| `/training` | Trigger model training |
+| `/predict` | Make predictions |
 
 ---
 
-## 📊 Pipeline Stages
-
-### 1. Data Ingestion
-- Fetches data from MongoDB/data source
-- Splits data into train and test sets
-- Saves raw data as artifacts
-
-### 2. Data Validation
-- Schema validation
-- Data drift detection
-- Quality checks
-
-### 3. Data Transformation
-- Feature engineering
-- Handling missing values
-- Encoding categorical variables
-- Feature scaling
-
-### 4. Model Training
-- Multiple algorithm experimentation
-- Hyperparameter tuning
-- Model selection
-
-### 5. Model Evaluation
-- Performance metrics calculation
-- Model comparison
-- Threshold optimization
-
----
-
-## 📈 Model Training
-
-### Features Used
+## 📈 Features Used
 
 | Feature | Description |
 |---------|-------------|
@@ -250,43 +418,6 @@ curl -X POST http://localhost:8080/predict \
 | Annual_Premium | Amount paid as premium |
 | Policy_Sales_Channel | Channel for policy outreach |
 | Vintage | Number of days customer associated |
-
-### Model Performance
-
-| Model | Accuracy | Precision | Recall | F1-Score | AUC-ROC |
-|-------|----------|-----------|--------|----------|---------|
-| Random Forest | - | - | - | - | - |
-| XGBoost | - | - | - | - | - |
-| LightGBM | - | - | - | - | - |
-
-*Results will be updated after training*
-
----
-
-## 🌐 Deployment
-
-### AWS Deployment Architecture
-
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   GitHub     │────▶│GitHub Actions│────▶│   AWS ECR    │
-│  Repository  │     │   (CI/CD)    │     │  (Container) │
-└──────────────┘     └──────────────┘     └──────────────┘
-                                                  │
-                                                  ▼
-                     ┌──────────────┐     ┌──────────────┐
-                     │  End Users   │◀────│   AWS EC2    │
-                     └──────────────┘     │ (Application)│
-                                          └──────────────┘
-```
-
-### Deployment Steps
-
-1. Configure AWS credentials
-2. Create ECR repository
-3. Set up EC2 instance
-4. Configure GitHub secrets
-5. Push to main branch to trigger deployment
 
 ---
 
@@ -311,11 +442,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📧 Contact
 
 **Author:** Anjit  
-**Project Link:** [https://github.com/your-username/MLOPS-Project-Vehicle-insurance](https://github.com/your-username/MLOPS-Project-Vehicle-insurance)
+**Project Link:** [https://github.com/taanjit/MLOPS-Project-Vehicle-insurance](https://github.com/taanjit/MLOPS-Project-Vehicle-insurance)
 
 ---
 
 <p align="center">
   Made with ❤️ for MLOps Learning
 </p>
-
