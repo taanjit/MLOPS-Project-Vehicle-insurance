@@ -3,3 +3,4 @@
 artifact/
 __pycache__/
 .env
+notebook/data.csv
