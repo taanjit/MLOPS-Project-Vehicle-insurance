@@ -51,7 +51,9 @@ class MongoDBClient:
                     raise Exception(f"Environment variable '{MONGODB_URL_KEY}' is not set.")
                 
                 # Establish a new MongoDB client connection
-                MongoDBClient.client = pymongo.MongoClient(mongo_db_url, tlsCAFile=ca)
+                # For local MongoDB without SSL, don't use tlsCAFile
+                # Use tlsCAFile=ca only for MongoDB Atlas or SSL-enabled servers
+                MongoDBClient.client = pymongo.MongoClient(mongo_db_url)
                 
             # Use the shared MongoClient for this instance
             self.client = MongoDBClient.client

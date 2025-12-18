@@ -1,5 +1,8 @@
 import os
 from datetime import date
+import dotenv
+
+dotenv.load_dotenv()
 
 # For MongoDB connection
 DATABASE_NAME = "vehicle_insurance"
